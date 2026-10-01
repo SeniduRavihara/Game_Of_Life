@@ -145,6 +145,29 @@ make uninstall
 
 ---
 
+## Automated CI/CD Builds (Windows `.exe` & macOS `.dmg`)
+
+This repository includes a ready-to-use **GitHub Actions Workflow** (`.github/workflows/build-artifacts.yml`) that automatically compiles and packages installable files for all major operating systems on every push or manual trigger:
+
+| Target OS | Output File | Description |
+| :--- | :--- | :--- |
+| **Windows** | `game-of-life-windows-setup.exe` | Complete Inno Setup installer wizard |
+| **Windows** | `game-of-life-windows-x64.zip` | Standalone portable `.exe` with bundled `SDL2.dll` |
+| **macOS** | `game-of-life-macos.dmg` | Native Apple `.app` bundle inside `.dmg` disk image |
+| **Linux** | `game-of-life-linux-x64.tar.gz` | Standalone Linux archive with icon and installer script |
+
+### How to Trigger the Workflow:
+1. **Manual Run**:
+   - Go to your repository on GitHub: `https://github.com/SeniduRavihara/Game_Of_Life`
+   - Click the **Actions** tab.
+   - Select **"Build Desktop Applications"** on the left.
+   - Click **Run workflow** -> **Run workflow**.
+   - Download the generated `.dmg` and `.exe` files directly from the run summary under **Artifacts**!
+2. **Automated on Git Tag (Releases)**:
+   - When you create a release tag (e.g. `v1.0.0`), GitHub Actions will build all targets and automatically attach `game-of-life-windows-setup.exe` and `game-of-life-macos.dmg` directly to the GitHub Release!
+
+---
+
 ## Project Structure
 
 ```

@@ -18,6 +18,14 @@ bool CPUEngine::init(int w, int h) {
     return true;
 }
 
+#if defined(__clang__)
+#define UNROLL_3 _Pragma("unroll 3")
+#elif defined(__GNUC__)
+#define UNROLL_3 _Pragma("GCC unroll 3")
+#else
+#define UNROLL_3
+#endif
+
 void CPUEngine::step() {
     #ifdef _OPENMP
     #pragma omp parallel for collapse(2) schedule(static)
@@ -26,12 +34,12 @@ void CPUEngine::step() {
         for (int x = 0; x < width; ++x) {
             int alive_neighbors = 0;
 
-            #pragma GCC unroll 3
+            UNROLL_3
             for (int dy = -1; dy <= 1; ++dy) {
                 int ny = (y + dy + height) % height;
                 int row_offset = ny * width;
 
-                #pragma GCC unroll 3
+                UNROLL_3
                 for (int dx = -1; dx <= 1; ++dx) {
                     if (dx == 0 && dy == 0) continue;
                     int nx = (x + dx + width) % width;

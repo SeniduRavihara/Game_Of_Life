@@ -1,0 +1,195 @@
+name: Build Desktop Applications (Windows, macOS & Linux)
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ============================================================================
+  # 1. WINDOWS BUILD (.exe portable & .exe installer)
+  # ============================================================================
+  build-windows:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 (MinGW 64-bit)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+
+      - name: Compile Windows Executable
+        shell: msys2 {0}
+        run: |
+          echo "Compiling game_of_life.exe with MinGW..."
+          g++ -std=c++14 -O3 -Wall \
+              -Iinclude \
+              src/font8x8.cpp \
+              src/gui.cpp \
+              src/engine_cpu.cpp \
+              src/engine_factory.cpp \
+              src/main.cpp \
+              -o game_of_life.exe \
+              -lmingw32 -lSDL2main -lSDL2 -mwindows
+
+          # Copy runtime SDL2.dll
+          cp /mingw64/bin/SDL2.dll .
+
+      - name: Create Portable Windows ZIP
+        shell: bash
+        run: |
+          mkdir -p release-win
+          cp game_of_life.exe SDL2.dll README.md release-win/
+          cd release-win
+          7z a ../game-of-life-windows-x64.zip *
+          cd ..
+
+      - name: Compile Windows Setup Installer (Inno Setup)
+        shell: cmd
+        run: |
+          iscc assets\installer.iss
+
+      - name: Upload Windows Portable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-of-life-windows-portable
+          path: game-of-life-windows-x64.zip
+
+      - name: Upload Windows Setup Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-of-life-windows-installer
+          path: game-of-life-windows-setup.exe
+
+  # ============================================================================
+  # 2. MACOS BUILD (Native .app bundle & .dmg installer)
+  # ============================================================================
+  build-macos:
+    name: Build macOS (.dmg)
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install SDL2 via Homebrew
+        run: |
+          brew install sdl2
+
+      - name: Compile macOS Binary
+        run: |
+          SDL_CFLAGS=$(sdl2-config --cflags)
+          SDL_LIBS=$(sdl2-config --libs)
+          echo "SDL CFLAGS: $SDL_CFLAGS"
+          echo "SDL LIBS: $SDL_LIBS"
+
+          clang++ -std=c++14 -O3 -Wall \
+              -Iinclude $SDL_CFLAGS \
+              src/font8x8.cpp \
+              src/gui.cpp \
+              src/engine_cpu.cpp \
+              src/engine_factory.cpp \
+              src/main.cpp \
+              -o game_of_life \
+              $SDL_LIBS
+
+      - name: Assemble macOS .app Bundle
+        run: |
+          APP_NAME="Game of Life.app"
+          mkdir -p "$APP_NAME/Contents/MacOS"
+          mkdir -p "$APP_NAME/Contents/Resources"
+
+          cp game_of_life "$APP_NAME/Contents/MacOS/game_of_life"
+          chmod +x "$APP_NAME/Contents/MacOS/game_of_life"
+          cp assets/Info.plist "$APP_NAME/Contents/Info.plist"
+
+      - name: Create macOS .dmg Disk Image
+        run: |
+          mkdir -p dmg_folder
+          cp -R "Game of Life.app" dmg_folder/
+          # Create a link to Applications directory for drag-and-drop installation
+          ln -s /Applications dmg_folder/Applications
+
+          hdiutil create -volname "Game of Life" \
+                         -srcfolder dmg_folder \
+                         -ov -format UDZO \
+                         game-of-life-macos.dmg
+
+      - name: Upload macOS DMG Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-of-life-macos-dmg
+          path: game-of-life-macos.dmg
+
+  # ============================================================================
+  # 3. LINUX BUILD (.tar.gz standalone)
+  # ============================================================================
+  build-linux:
+    name: Build Linux (.tar.gz)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install SDL2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev
+
+      - name: Build Linux Binary
+        run: |
+          make cpu
+
+      - name: Package Linux Distribution
+        run: |
+          mkdir -p game-of-life-linux-x64
+          cp bin/game_of_life game-of-life-linux-x64/
+          cp -r assets game-of-life-linux-x64/
+          cp install.sh uninstall.sh README.md game-of-life-linux-x64/
+          tar -czf game-of-life-linux-x64.tar.gz game-of-life-linux-x64/
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-of-life-linux-x64
+          path: game-of-life-linux-x64.tar.gz
+
+  # ============================================================================
+  # 4. GITHUB RELEASE (Triggered on git tags: v*)
+  # ============================================================================
+  create-release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-macos, build-linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: List Artifacts
+        run: ls -la release-artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-artifacts/game-of-life-windows-setup.exe
+            release-artifacts/game-of-life-windows-x64.zip
+            release-artifacts/game-of-life-macos.dmg
+            release-artifacts/game-of-life-linux-x64.tar.gz
+          generate_release_notes: true
