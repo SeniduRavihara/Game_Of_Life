@@ -4,7 +4,17 @@
 #include <memory>
 #include <chrono>
 #include <algorithm>
-#include <SDL2/SDL.h>
+#if defined(__has_include)
+  #if __has_include(<SDL2/SDL.h>)
+    #include <SDL2/SDL.h>
+  #elif __has_include(<SDL.h>)
+    #include <SDL.h>
+  #else
+    #include <SDL2/SDL.h>
+  #endif
+#else
+  #include <SDL2/SDL.h>
+#endif
 
 #include "engine.h"
 #include "font8x8.h"

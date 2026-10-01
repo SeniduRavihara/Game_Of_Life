@@ -11,6 +11,7 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\GameOfLife
 DefaultGroupName={#MyAppName}
+SourceDir=..
 OutputDir=.
 OutputBaseFilename=game-of-life-windows-setup
 Compression=lzma2/max

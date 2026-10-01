@@ -90,30 +90,39 @@ jobs:
 
       - name: Compile macOS Binary
         run: |
-          SDL_CFLAGS=$(sdl2-config --cflags)
-          SDL_LIBS=$(sdl2-config --libs)
-          echo "SDL CFLAGS: $SDL_CFLAGS"
-          echo "SDL LIBS: $SDL_LIBS"
+          SDL_PREFIX=$(brew --prefix sdl2)
+          echo "SDL2 Prefix: $SDL_PREFIX"
 
           clang++ -std=c++14 -O3 -Wall \
-              -Iinclude $SDL_CFLAGS \
+              -Iinclude \
+              -I"$SDL_PREFIX/include" \
+              -I"$SDL_PREFIX/include/SDL2" \
               src/font8x8.cpp \
               src/gui.cpp \
               src/engine_cpu.cpp \
               src/engine_factory.cpp \
               src/main.cpp \
-              -o game_of_life \
-              $SDL_LIBS
+              -L"$SDL_PREFIX/lib" \
+              -lSDL2 \
+              -o game_of_life
 
       - name: Assemble macOS .app Bundle
         run: |
+          SDL_PREFIX=$(brew --prefix sdl2)
           APP_NAME="Game of Life.app"
           mkdir -p "$APP_NAME/Contents/MacOS"
           mkdir -p "$APP_NAME/Contents/Resources"
+          mkdir -p "$APP_NAME/Contents/Frameworks"
 
           cp game_of_life "$APP_NAME/Contents/MacOS/game_of_life"
           chmod +x "$APP_NAME/Contents/MacOS/game_of_life"
           cp assets/Info.plist "$APP_NAME/Contents/Info.plist"
+
+          # Embed SDL2 dynamic library so the app runs on Macs without Homebrew
+          cp "$SDL_PREFIX/lib/libSDL2.dylib" "$APP_NAME/Contents/Frameworks/"
+          install_name_tool -id @executable_path/../Frameworks/libSDL2.dylib "$APP_NAME/Contents/Frameworks/libSDL2.dylib"
+          install_name_tool -change "$SDL_PREFIX/lib/libSDL2-2.0.0.dylib" @executable_path/../Frameworks/libSDL2.dylib "$APP_NAME/Contents/MacOS/game_of_life" 2>/dev/null || true
+          install_name_tool -change "$SDL_PREFIX/lib/libSDL2.dylib" @executable_path/../Frameworks/libSDL2.dylib "$APP_NAME/Contents/MacOS/game_of_life" 2>/dev/null || true
 
       - name: Create macOS .dmg Disk Image
         run: |

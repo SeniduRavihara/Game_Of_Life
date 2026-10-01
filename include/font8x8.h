@@ -1,7 +1,17 @@
 #ifndef FONT8X8_H
 #define FONT8X8_H
 
-#include <SDL2/SDL.h>
+#if defined(__has_include)
+  #if __has_include(<SDL2/SDL.h>)
+    #include <SDL2/SDL.h>
+  #elif __has_include(<SDL.h>)
+    #include <SDL.h>
+  #else
+    #include <SDL2/SDL.h>
+  #endif
+#else
+  #include <SDL2/SDL.h>
+#endif
 #include <string>
 
 // Standard 8x8 monochrome bitmap font for ASCII characters 32 (space) to 126 (~)
