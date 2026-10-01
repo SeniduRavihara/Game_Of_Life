@@ -89,6 +89,21 @@ public:
     int idx_erase = -1;
     int idx_stamp = -1;
     int idx_engine = -1;
+    std::vector<int> idx_grid_sizes;
+    std::vector<std::pair<int, int>> grid_size_presets = {
+        {256, 256},
+        {512, 512},
+        {1024, 1024},
+        {2048, 2048},
+        {4096, 4096},
+        {1920, 1080}
+    };
+
+    struct SectionLabel {
+        std::string title;
+        int y;
+    };
+    std::vector<SectionLabel> section_labels;
 
     // Status message
     std::string status_msg = "Ready. Left-click canvas to draw, drag to paint.";
@@ -109,12 +124,16 @@ public:
     std::string engine_name = "CPU (OpenMP)";
     bool cuda_capable = false;
 
+    int current_grid_w = 512;
+    int current_grid_h = 512;
+
     // Callbacks for main loop
     std::function<void()> on_step_clicked;
     std::function<void()> on_clear_clicked;
     std::function<void()> on_randomize_clicked;
     std::function<void()> on_toggle_engine;
     std::function<void()> on_reset_view;
+    std::function<void(int new_w, int new_h)> on_change_grid_size;
 
     GUI();
     void init(int win_w, int win_h);

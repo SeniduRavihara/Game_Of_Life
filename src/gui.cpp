@@ -71,125 +71,183 @@ void GUI::update_layout(int win_w, int win_h) {
     canvas_rect  = { 0, header_h, win_w - sidebar_w, win_h - header_h - status_h };
 
     buttons.clear();
+    section_labels.clear();
+    idx_grid_sizes.clear();
 
     int sx = sidebar_rect.x + 14;
-    int sy = sidebar_rect.y + 12;
+    int sy = sidebar_rect.y + 10;
     int full_w = sidebar_w - 28;
     int half_w = (full_w - 8) / 2;
     int third_w = (full_w - 12) / 3;
 
     // --- Section 1: Simulation Controls ---
-    buttons.emplace_back(sx, sy, full_w, 32, is_running ? "|| PAUSE SIMULATION" : "> PLAY SIMULATION", [this]() {
+    section_labels.push_back({ "--- SIMULATION CONTROLS ---", sy });
+    sy += 14;
+
+    buttons.emplace_back(sx, sy, full_w, 30, is_running ? "|| PAUSE SIMULATION" : "> PLAY SIMULATION", [this]() {
         is_running = !is_running;
         status_msg = is_running ? "Simulation running." : "Simulation paused.";
     });
     idx_play_pause = (int)buttons.size() - 1;
     buttons[idx_play_pause].custom_color = true;
     buttons[idx_play_pause].override_color = is_running ? UITheme::BTN_ACTIVE : UITheme::BTN_PAUSED;
-    sy += 38;
+    sy += 34;
 
-    buttons.emplace_back(sx, sy, half_w, 26, "STEP (S)", [this]() {
+    buttons.emplace_back(sx, sy, half_w, 24, "STEP (S)", [this]() {
         if (on_step_clicked) on_step_clicked();
         status_msg = "Stepped 1 generation.";
     });
 
-    buttons.emplace_back(sx + half_w + 8, sy, half_w, 26, "CLEAR (C)", [this]() {
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 24, "CLEAR (C)", [this]() {
         if (on_clear_clicked) on_clear_clicked();
         status_msg = "Grid cleared.";
     });
     buttons.back().is_danger = true;
-    sy += 32;
+    sy += 28;
 
-    buttons.emplace_back(sx, sy, full_w, 26, "RANDOMIZE (R)", [this]() {
+    buttons.emplace_back(sx, sy, full_w, 24, "RANDOMIZE (R)", [this]() {
         if (on_randomize_clicked) on_randomize_clicked();
         status_msg = "Grid randomized (20% alive).";
     });
-    sy += 38;
+    sy += 32;
 
     // --- Section 2: Speed Controls ---
-    buttons.emplace_back(sx, sy, third_w, 24, "<< SLOW", [this]() {
+    section_labels.push_back({ "--- EXECUTION SPEED ---", sy });
+    sy += 14;
+
+    buttons.emplace_back(sx, sy, third_w, 22, "<< SLOW", [this]() {
         delay_ms = std::min(200, delay_ms + 8);
         status_msg = "Speed set to " + std::to_string(delay_ms) + " ms delay.";
     });
-    buttons.emplace_back(sx + third_w + 6, sy, third_w, 24, "60 FPS", [this]() {
+    buttons.emplace_back(sx + third_w + 6, sy, third_w, 22, "60 FPS", [this]() {
         delay_ms = 16;
         status_msg = "Speed set to 60 FPS (16ms).";
     });
-    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 24, "FAST >>", [this]() {
+    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 22, "FAST >>", [this]() {
         delay_ms = std::max(0, delay_ms - 8);
         status_msg = "Speed set to " + std::to_string(delay_ms) + " ms delay.";
     });
-    sy += 30;
+    sy += 26;
 
     buttons.emplace_back(sx, sy, full_w, 22, "MAX SPEED (0ms DELAY)", [this]() {
         delay_ms = 0;
         status_msg = "Max speed unlocked (no frame delay).";
     });
-    sy += 36;
+    sy += 30;
 
-    // --- Section 3: Tools & Brush ---
-    buttons.emplace_back(sx, sy, third_w, 26, "PEN", [this]() {
+    // --- Section 3: Grid Resolution Presets ---
+    section_labels.push_back({ "--- GRID RESOLUTION ---", sy });
+    sy += 14;
+
+    buttons.emplace_back(sx, sy, half_w, 22, "256x256", [this]() {
+        if (on_change_grid_size) on_change_grid_size(256, 256);
+    });
+    idx_grid_sizes.push_back((int)buttons.size() - 1);
+
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 22, "512x512", [this]() {
+        if (on_change_grid_size) on_change_grid_size(512, 512);
+    });
+    idx_grid_sizes.push_back((int)buttons.size() - 1);
+    sy += 26;
+
+    buttons.emplace_back(sx, sy, half_w, 22, "1024x1024 (1M)", [this]() {
+        if (on_change_grid_size) on_change_grid_size(1024, 1024);
+    });
+    idx_grid_sizes.push_back((int)buttons.size() - 1);
+
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 22, "2048x2048 (4M)", [this]() {
+        if (on_change_grid_size) on_change_grid_size(2048, 2048);
+    });
+    idx_grid_sizes.push_back((int)buttons.size() - 1);
+    sy += 26;
+
+    buttons.emplace_back(sx, sy, full_w, 22, "4096x4096 (16.8M ULTRA)", [this]() {
+        if (on_change_grid_size) on_change_grid_size(4096, 4096);
+    });
+    idx_grid_sizes.push_back((int)buttons.size() - 1);
+    sy += 26;
+
+    buttons.emplace_back(sx, sy, full_w, 22, "1920x1080 (FHD 2M)", [this]() {
+        if (on_change_grid_size) on_change_grid_size(1920, 1080);
+    });
+    idx_grid_sizes.push_back((int)buttons.size() - 1);
+    sy += 30;
+
+    // --- Section 4: Tools & Brush ---
+    section_labels.push_back({ "--- TOOLS & BRUSH ---", sy });
+    sy += 14;
+
+    buttons.emplace_back(sx, sy, third_w, 24, "PEN", [this]() {
         current_tool = ToolMode::DRAW;
         status_msg = "Tool: Pen (Draw living cells).";
     });
     idx_draw = (int)buttons.size() - 1;
 
-    buttons.emplace_back(sx + third_w + 6, sy, third_w, 26, "ERASE", [this]() {
+    buttons.emplace_back(sx + third_w + 6, sy, third_w, 24, "ERASE", [this]() {
         current_tool = ToolMode::ERASE;
         status_msg = "Tool: Erase cells.";
     });
     idx_erase = (int)buttons.size() - 1;
 
-    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 26, "STAMP", [this]() {
+    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 24, "STAMP", [this]() {
         current_tool = ToolMode::STAMP;
         status_msg = "Tool: Stamp pattern (Click on canvas to place).";
     });
     idx_stamp = (int)buttons.size() - 1;
-    sy += 32;
+    sy += 28;
 
     // Brush sizes
-    buttons.emplace_back(sx, sy, third_w, 22, "Size 1", [this]() {
+    buttons.emplace_back(sx, sy, third_w, 20, "Size 1", [this]() {
         brush_radius = 0;
         status_msg = "Brush size: 1x1.";
     });
-    buttons.emplace_back(sx + third_w + 6, sy, third_w, 22, "Size 3", [this]() {
+    buttons.emplace_back(sx + third_w + 6, sy, third_w, 20, "Size 3", [this]() {
         brush_radius = 1;
         status_msg = "Brush size: 3x3.";
     });
-    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 22, "Size 5", [this]() {
+    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 20, "Size 5", [this]() {
         brush_radius = 2;
         status_msg = "Brush size: 5x5.";
     });
-    sy += 36;
+    sy += 28;
 
-    // --- Section 4: Pattern Stamps ---
+    // --- Section 5: Pattern Stamps ---
+    section_labels.push_back({ "--- PATTERN STAMP LIBRARY ---", sy });
+    sy += 14;
+
     for (size_t i = 0; i < patterns.size(); ++i) {
         int px = (i % 2 == 0) ? sx : sx + half_w + 8;
-        int py = sy + (int)(i / 2) * 28;
+        int py = sy + (int)(i / 2) * 26;
 
-        buttons.emplace_back(px, py, half_w, 24, patterns[i].name, [this, i]() {
+        buttons.emplace_back(px, py, half_w, 22, patterns[i].name, [this, i]() {
             current_tool = ToolMode::STAMP;
             selected_pattern_idx = (int)i;
             status_msg = "Selected: " + patterns[i].name + ". Click canvas to place!";
         });
     }
-    sy += ((int)(patterns.size() + 1) / 2) * 28 + 12;
+    sy += ((int)(patterns.size() + 1) / 2) * 26 + 10;
 
-    // --- Section 5: Engine Selection ---
-    buttons.emplace_back(sx, sy, full_w, 28, "SWITCH ENGINE", [this]() {
+    // --- Section 6: Engine Selection ---
+    section_labels.push_back({ "--- COMPUTE ENGINE ---", sy });
+    sy += 14;
+
+    buttons.emplace_back(sx, sy, full_w, 26, "SWITCH ENGINE", [this]() {
         if (on_toggle_engine) on_toggle_engine();
     });
     idx_engine = (int)buttons.size() - 1;
-    sy += 38;
+    sy += 32;
 
-    // --- Section 6: Camera & View ---
-    buttons.emplace_back(sx, sy, half_w, 24, "RESET VIEW", [this]() {
+    // --- Section 7: Camera & View ---
+    section_labels.push_back({ "--- CAMERA / VIEW ---", sy });
+    sy += 14;
+
+    buttons.emplace_back(sx, sy, half_w, 22, "RESET VIEW", [this]() {
         zoom = 1.0f;
         pan_x = 0.0f;
         pan_y = 0.0f;
         status_msg = "View reset to 100% centered.";
     });
-    buttons.emplace_back(sx + half_w + 8, sy, half_w, 24, "FIT CANVAS", [this]() {
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 22, "FIT CANVAS", [this]() {
         if (on_reset_view) on_reset_view();
         status_msg = "Fit grid to canvas view.";
     });
@@ -287,6 +345,13 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
     if (idx_stamp >= 0 && idx_stamp < (int)buttons.size()) {
         buttons[idx_stamp].is_active = (current_tool == ToolMode::STAMP);
     }
+    for (size_t i = 0; i < idx_grid_sizes.size() && i < grid_size_presets.size(); ++i) {
+        int idx = idx_grid_sizes[i];
+        if (idx >= 0 && idx < (int)buttons.size()) {
+            buttons[idx].is_active = (current_grid_w == grid_size_presets[i].first &&
+                                      current_grid_h == grid_size_presets[i].second);
+        }
+    }
 
     // --- 1. Draw Header Bar ---
     SDL_SetRenderDrawColor(renderer, UITheme::HEADER_BG.r, UITheme::HEADER_BG.g, UITheme::HEADER_BG.b, 255);
@@ -310,11 +375,15 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
     font.draw_text_centered(engine_name, badge_x + 120, 14, UITheme::TEXT_TITLE, 1);
 
     // Header Metrics (Gen, Pop, FPS, Grid)
+    long long total_cells = (long long)grid_w * grid_h;
     std::ostringstream ss_metrics;
     ss_metrics << "GEN: " << gen
                << " | POP: " << population
                << " | FPS: " << std::fixed << std::setprecision(1) << fps
                << " | GRID: " << grid_w << "x" << grid_h;
+    if (total_cells >= 1000000) {
+        ss_metrics << " (" << std::fixed << std::setprecision(1) << ((double)total_cells / 1000000.0) << "M)";
+    }
     font.draw_text(ss_metrics.str(), badge_x + 260, 14, UITheme::ACCENT_AMBER, 1);
 
     // --- 2. Draw Sidebar Panel ---
@@ -324,32 +393,36 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
     SDL_SetRenderDrawColor(renderer, UITheme::PANEL_BORDER.r, UITheme::PANEL_BORDER.g, UITheme::PANEL_BORDER.b, 255);
     SDL_RenderDrawLine(renderer, sidebar_rect.x, sidebar_rect.y, sidebar_rect.x, sidebar_rect.y + sidebar_rect.h);
 
-    // Section Labels in Sidebar
+    // Dynamic Section Labels in Sidebar
     int label_x = sidebar_rect.x + 14;
-    font.draw_text("--- SIMULATION CONTROLS ---", label_x, sidebar_rect.y + 14, UITheme::TEXT_MUTED, 1);
-    font.draw_text("--- EXECUTION SPEED ---", label_x, sidebar_rect.y + 118, UITheme::TEXT_MUTED, 1);
-    font.draw_text("--- TOOLS & BRUSH ---", label_x, sidebar_rect.y + 204, UITheme::TEXT_MUTED, 1);
-    font.draw_text("--- PATTERN STAMP LIBRARY ---", label_x, sidebar_rect.y + 294, UITheme::TEXT_MUTED, 1);
-    font.draw_text("--- COMPUTE ENGINE ---", label_x, sidebar_rect.y + 406, UITheme::TEXT_MUTED, 1);
-    font.draw_text("--- CAMERA / VIEW ---", label_x, sidebar_rect.y + 472, UITheme::TEXT_MUTED, 1);
+    for (const auto& label : section_labels) {
+        font.draw_text(label.title, label_x, label.y, UITheme::TEXT_MUTED, 1);
+    }
 
     // Engine status description note
     std::string engine_desc = cuda_capable ? "CUDA Hardware Acceleration Active" : "Multi-Threaded CPU Engine (OpenMP)";
-    font.draw_text(engine_desc, label_x, sidebar_rect.y + 440, UITheme::TEXT_MUTED, 1);
+    int engine_note_y = sidebar_rect.y + 490;
+    if (idx_engine >= 0 && idx_engine < (int)buttons.size()) {
+        engine_note_y = buttons[idx_engine].rect.y + buttons[idx_engine].rect.h + 4;
+    }
+    font.draw_text(engine_desc, label_x, engine_note_y, UITheme::TEXT_MUTED, 1);
 
-    // Keyboard Shortcuts Box at bottom of sidebar
+    // Keyboard Shortcuts Box at bottom of sidebar (if space permits)
     int help_y = sidebar_rect.y + sidebar_rect.h - 96;
-    SDL_Rect help_rect = { label_x, help_y, sidebar_rect.w - 28, 88 };
-    SDL_SetRenderDrawColor(renderer, 20, 20, 26, 255);
-    SDL_RenderFillRect(renderer, &help_rect);
-    SDL_SetRenderDrawColor(renderer, UITheme::PANEL_BORDER.r, UITheme::PANEL_BORDER.g, UITheme::PANEL_BORDER.b, 255);
-    SDL_RenderDrawRect(renderer, &help_rect);
+    if (help_y > 540) {
+        SDL_Rect help_rect = { label_x, help_y, sidebar_rect.w - 28, 88 };
+        SDL_SetRenderDrawColor(renderer, 20, 20, 26, 255);
+        SDL_RenderFillRect(renderer, &help_rect);
+        SDL_SetRenderDrawColor(renderer, UITheme::PANEL_BORDER.r, UITheme::PANEL_BORDER.g, UITheme::PANEL_BORDER.b, 255);
+        SDL_RenderDrawRect(renderer, &help_rect);
 
-    font.draw_text("QUICK SHORTCUTS:", label_x + 8, help_y + 8, UITheme::ACCENT_AMBER, 1);
-    font.draw_text("[Space] Play/Pause | [S] Step", label_x + 8, help_y + 24, UITheme::TEXT_NORMAL, 1);
-    font.draw_text("[R] Randomize | [C] Clear Grid", label_x + 8, help_y + 40, UITheme::TEXT_NORMAL, 1);
-    font.draw_text("Right-Click: Erase | Wheel: Zoom", label_x + 8, help_y + 56, UITheme::TEXT_MUTED, 1);
-    font.draw_text("Middle-Click & Drag: Pan View", label_x + 8, help_y + 72, UITheme::TEXT_MUTED, 1);
+        font.draw_text("QUICK SHORTCUTS:", label_x + 8, help_y + 8, UITheme::ACCENT_AMBER, 1);
+        font.draw_text("[Space] Play/Pause | [S] Step", label_x + 8, help_y + 22, UITheme::TEXT_NORMAL, 1);
+        font.draw_text("[R] Randomize | [C] Clear Grid", label_x + 8, help_y + 36, UITheme::TEXT_NORMAL, 1);
+        font.draw_text("[1-5] Quick Grid Presets", label_x + 8, help_y + 50, UITheme::ACCENT_GREEN, 1);
+        font.draw_text("Right-Click: Erase | Wheel: Zoom", label_x + 8, help_y + 64, UITheme::TEXT_MUTED, 1);
+        font.draw_text("Middle-Click & Drag: Pan View", label_x + 8, help_y + 76, UITheme::TEXT_MUTED, 1);
+    }
 
     // Draw all sidebar buttons
     for (auto& btn : buttons) {

@@ -91,12 +91,57 @@ int main(int argc, char* argv[]) {
 
     // 5. Initialize GUI & Layout
     GUI gui;
+    gui.current_grid_w = grid_w;
+    gui.current_grid_h = grid_h;
     gui.init(win_w, win_h);
     gui.cuda_capable = has_cuda;
     gui.engine_name = engine->is_gpu() ? "ENGINE: CUDA (GPU)" : "ENGINE: CPU (OpenMP)";
 
+    // Forward declare grid_texture pointer
+    SDL_Texture* grid_texture = nullptr;
+
     // Connect GUI Callbacks
     unsigned long long generation = 0;
+
+    gui.on_change_grid_size = [&](int new_w, int new_h) {
+        if (new_w == grid_w && new_h == grid_h) return;
+
+        std::cout << "[INFO] Resizing simulation grid: " << grid_w << "x" << grid_h
+                  << " -> " << new_w << "x" << new_h << "\n";
+
+        grid_w = new_w;
+        grid_h = new_h;
+        gui.current_grid_w = grid_w;
+        gui.current_grid_h = grid_h;
+
+        engine->init(grid_w, grid_h);
+        engine->randomize(20, (unsigned int)time(nullptr));
+        generation = 0;
+
+        if (grid_texture) {
+            SDL_DestroyTexture(grid_texture);
+        }
+        grid_texture = SDL_CreateTexture(
+            renderer,
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            grid_w, grid_h
+        );
+
+        gui.zoom = 1.0f;
+        gui.pan_x = 0.0f;
+        gui.pan_y = 0.0f;
+
+        long long total_cells = (long long)grid_w * grid_h;
+        std::ostringstream ss;
+        ss << "Grid resized to " << grid_w << "x" << grid_h << " (";
+        if (total_cells >= 1000000) {
+            ss << std::fixed << std::setprecision(1) << ((double)total_cells / 1000000.0) << "M cells)!";
+        } else {
+            ss << (total_cells / 1000) << "K cells)!";
+        }
+        gui.status_msg = ss.str();
+    };
 
     gui.on_step_clicked = [&]() {
         engine->step();
@@ -140,7 +185,7 @@ int main(int argc, char* argv[]) {
     };
 
     // 6. Create SDL Streaming Texture for the Grid
-    SDL_Texture* grid_texture = SDL_CreateTexture(
+    grid_texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING,
@@ -217,6 +262,24 @@ int main(int argc, char* argv[]) {
                     case SDLK_DOWN:
                         gui.delay_ms = std::min(200, gui.delay_ms + 4);
                         gui.status_msg = "Speed set to " + std::to_string(gui.delay_ms) + " ms delay.";
+                        break;
+                    case SDLK_1:
+                        if (gui.on_change_grid_size) gui.on_change_grid_size(256, 256);
+                        break;
+                    case SDLK_2:
+                        if (gui.on_change_grid_size) gui.on_change_grid_size(512, 512);
+                        break;
+                    case SDLK_3:
+                        if (gui.on_change_grid_size) gui.on_change_grid_size(1024, 1024);
+                        break;
+                    case SDLK_4:
+                        if (gui.on_change_grid_size) gui.on_change_grid_size(2048, 2048);
+                        break;
+                    case SDLK_5:
+                        if (gui.on_change_grid_size) gui.on_change_grid_size(4096, 4096);
+                        break;
+                    case SDLK_6:
+                        if (gui.on_change_grid_size) gui.on_change_grid_size(1920, 1080);
                         break;
                     case SDLK_ESCAPE:
                     case SDLK_q:

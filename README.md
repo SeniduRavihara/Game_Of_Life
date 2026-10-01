@@ -8,9 +8,13 @@ It features an embedded graphical user interface (GUI) with interactive controls
 
 ## Key Features
 
+- **Dynamic Massive Grid Resizing**:
+  - Live grid resizing directly from the GUI or hotkeys without restarting the app!
+  - **Presets**: `256x256` (65K), `512x512` (262K), `1024x1024` (1M cells), `2048x2048` (4M cells), `4096x4096` (16.8M ULTRA cells), and `1920x1080` (FHD 2M cells).
+  - Automatically re-centers camera and recalculates textures seamlessly.
 - **Modern Embedded GUI**:
-  - **Header Bar**: Displays current active compute engine badge, real-time FPS counter, generation count, live population count, and grid resolution.
-  - **Sidebar Control Panel**: Organized control sections for simulation playback, speed presets, drawing tools, brush sizes, and pattern libraries.
+  - **Header Bar**: Displays current active compute engine badge, real-time FPS counter, generation count, live population count, and grid resolution with million-cell metric tags.
+  - **Sidebar Control Panel**: Organized control sections for simulation playback, speed presets, drawing tools, brush sizes, pattern libraries, compute engine, camera, and grid resolutions.
   - **Bottom Status Bar**: Live cursor grid coordinate tracking, cell state inspector, active tool indicator, and zoom level.
   - **Zero External Font Dependencies**: Built-in 8x8 font atlas rendered directly with hardware-accelerated SDL2.
 - **Dual-Engine Architecture**:
@@ -42,7 +46,7 @@ It features an embedded graphical user interface (GUI) with interactive controls
 
 ```
 +---------------------------------------------------------------------------------------------------------+
-| [Header] CONWAY'S GAME OF LIFE | [ENGINE: CPU (OpenMP)] | GEN: 1,420 | POP: 8,310 | FPS: 60.0 | 512x512 |
+| [Header] CONWAY'S GAME OF LIFE | [ENGINE: CPU (OpenMP)] | GEN: 1,420 | POP: 8,310 | FPS: 60.0 | 1024x1024 (1.0M) |
 +------------------------------------------------------------+--------------------------------------------+
 |                                                            | --- SIMULATION CONTROLS ---                |
 |                                                            | [ > PLAY / || PAUSE ]                      |
@@ -67,6 +71,11 @@ It features an embedded graphical user interface (GUI) with interactive controls
 |                                                            |                                            |
 |                                                            | --- CAMERA / VIEW ---                      |
 |                                                            | [ RESET VIEW ]       [ FIT CANVAS ]        |
+|                                                            |                                            |
+|                                                            | --- GRID RESOLUTION ---                    |
+|                                                            | [ 256x256 ]          [ 512x512 ]           |
+|                                                            | [ 1024x1024 (1M) ]   [ 2048x2048 (4M) ]    |
+|                                                            | [ 4096x4096 (16M) ]  [ 1920x1080 (FHD) ]   |
 +------------------------------------------------------------+--------------------------------------------+
 | [Status Bar] Ready | COORD: (X: 184, Y: 295) | CELL: ALIVE | ZOOM: 100%                                 |
 +---------------------------------------------------------------------------------------------------------+
@@ -82,6 +91,12 @@ It features an embedded graphical user interface (GUI) with interactive controls
 | `[S]` | **Single-step** 1 generation (when paused) |
 | `[R]` | **Randomize** grid (20% alive density) |
 | `[C]` | **Clear** entire grid (kill all cells) |
+| `[1]` | Resize to **256x256** (65K cells) |
+| `[2]` | Resize to **512x512** (262K cells) |
+| `[3]` | Resize to **1024x1024** (1.0M cells) |
+| `[4]` | Resize to **2048x2048** (4.2M cells) |
+| `[5]` | Resize to **4096x4096** (16.8M ULTRA cells) |
+| `[6]` | Resize to **1920x1080** (Full HD 2.0M cells) |
 | `[+ / = / Up Arrow]` | **Increase simulation speed** (decrease delay) |
 | `[- / Down Arrow]` | **Decrease simulation speed** (increase delay) |
 | `[Left-Click + Drag]` | Paint living cells or stamp selected pattern |
