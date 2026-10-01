@@ -1,0 +1,17 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Conway's Game of Life
+GenericName=Cellular Automaton Simulator
+Comment=Real-time interactive simulation of Conway's Game of Life with hardware acceleration
+Exec=game_of_life
+Icon=game-of-life
+Terminal=false
+Categories=Game;Simulation;Education;Science;
+Keywords=game;life;conway;cellular;automaton;simulation;cuda;openmp;
+StartupNotify=true
+Actions=New;
+
+[Desktop Action New]
+Name=Launch Game of Life
+Exec=game_of_life
