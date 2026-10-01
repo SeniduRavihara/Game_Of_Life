@@ -128,17 +128,15 @@ int main(int argc, char* argv[]) {
             grid_w, grid_h
         );
 
-        gui.zoom = 1.0f;
-        gui.pan_x = 0.0f;
-        gui.pan_y = 0.0f;
+        gui.fit_to_canvas(grid_w, grid_h);
 
         long long total_cells = (long long)grid_w * grid_h;
         std::ostringstream ss;
-        ss << "Grid resized to " << grid_w << "x" << grid_h << " (";
+        ss << "Grid resized: " << grid_w << "x" << grid_h << " (";
         if (total_cells >= 1000000) {
-            ss << std::fixed << std::setprecision(1) << ((double)total_cells / 1000000.0) << "M cells)!";
+            ss << std::fixed << std::setprecision(1) << ((double)total_cells / 1000000.0) << "M cells)! Wheel: zoom, Drag: pan.";
         } else {
-            ss << (total_cells / 1000) << "K cells)!";
+            ss << (total_cells / 1000) << "K cells)! Wheel: zoom, Drag: pan.";
         }
         gui.status_msg = ss.str();
     };
@@ -179,9 +177,13 @@ int main(int argc, char* argv[]) {
     };
 
     gui.on_reset_view = [&]() {
-        gui.zoom = 1.0f;
-        gui.pan_x = 0.0f;
-        gui.pan_y = 0.0f;
+        gui.reset_view(grid_w, grid_h);
+        gui.status_msg = "View reset to 100% scale.";
+    };
+
+    gui.on_fit_canvas = [&]() {
+        gui.fit_to_canvas(grid_w, grid_h);
+        gui.status_msg = "Fit entire grid inside canvas.";
     };
 
     // 6. Create SDL Streaming Texture for the Grid

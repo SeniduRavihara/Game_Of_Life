@@ -89,6 +89,8 @@ public:
     int idx_erase = -1;
     int idx_stamp = -1;
     int idx_engine = -1;
+    int engine_note_y = 0;
+    std::vector<int> idx_brush_sizes;
     std::vector<int> idx_grid_sizes;
     std::vector<std::pair<int, int>> grid_size_presets = {
         {256, 256},
@@ -133,11 +135,15 @@ public:
     std::function<void()> on_randomize_clicked;
     std::function<void()> on_toggle_engine;
     std::function<void()> on_reset_view;
+    std::function<void()> on_fit_canvas;
     std::function<void(int new_w, int new_h)> on_change_grid_size;
 
     GUI();
     void init(int win_w, int win_h);
     void update_layout(int win_w, int win_h);
+
+    void fit_to_canvas(int grid_w, int grid_h);
+    void reset_view(int grid_w, int grid_h);
 
     bool handle_event(const SDL_Event& e);
     void draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long gen, int population, float fps, int grid_w, int grid_h);

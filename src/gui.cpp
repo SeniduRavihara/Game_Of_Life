@@ -133,83 +133,87 @@ void GUI::update_layout(int win_w, int win_h) {
         delay_ms = 0;
         status_msg = "Max speed unlocked (no frame delay).";
     });
-    sy += 30;
+    sy += 26;
 
     // --- Section 3: Grid Resolution Presets ---
     section_labels.push_back({ "--- GRID RESOLUTION ---", sy });
     sy += 14;
 
-    buttons.emplace_back(sx, sy, half_w, 22, "256x256", [this]() {
+    buttons.emplace_back(sx, sy, half_w, 20, "256x256", [this]() {
         if (on_change_grid_size) on_change_grid_size(256, 256);
     });
     idx_grid_sizes.push_back((int)buttons.size() - 1);
 
-    buttons.emplace_back(sx + half_w + 8, sy, half_w, 22, "512x512", [this]() {
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 20, "512x512", [this]() {
         if (on_change_grid_size) on_change_grid_size(512, 512);
     });
     idx_grid_sizes.push_back((int)buttons.size() - 1);
-    sy += 26;
+    sy += 24;
 
-    buttons.emplace_back(sx, sy, half_w, 22, "1024x1024 (1M)", [this]() {
+    buttons.emplace_back(sx, sy, half_w, 20, "1024x1024 (1M)", [this]() {
         if (on_change_grid_size) on_change_grid_size(1024, 1024);
     });
     idx_grid_sizes.push_back((int)buttons.size() - 1);
 
-    buttons.emplace_back(sx + half_w + 8, sy, half_w, 22, "2048x2048 (4M)", [this]() {
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 20, "2048x2048 (4M)", [this]() {
         if (on_change_grid_size) on_change_grid_size(2048, 2048);
     });
     idx_grid_sizes.push_back((int)buttons.size() - 1);
-    sy += 26;
+    sy += 24;
 
-    buttons.emplace_back(sx, sy, full_w, 22, "4096x4096 (16.8M ULTRA)", [this]() {
+    buttons.emplace_back(sx, sy, half_w, 20, "4096 (16.8M)", [this]() {
         if (on_change_grid_size) on_change_grid_size(4096, 4096);
     });
     idx_grid_sizes.push_back((int)buttons.size() - 1);
-    sy += 26;
 
-    buttons.emplace_back(sx, sy, full_w, 22, "1920x1080 (FHD 2M)", [this]() {
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 20, "1920x1080 (2M)", [this]() {
         if (on_change_grid_size) on_change_grid_size(1920, 1080);
     });
     idx_grid_sizes.push_back((int)buttons.size() - 1);
-    sy += 30;
+    sy += 26;
 
     // --- Section 4: Tools & Brush ---
     section_labels.push_back({ "--- TOOLS & BRUSH ---", sy });
     sy += 14;
 
-    buttons.emplace_back(sx, sy, third_w, 24, "PEN", [this]() {
+    buttons.emplace_back(sx, sy, third_w, 22, "PEN", [this]() {
         current_tool = ToolMode::DRAW;
         status_msg = "Tool: Pen (Draw living cells).";
     });
     idx_draw = (int)buttons.size() - 1;
 
-    buttons.emplace_back(sx + third_w + 6, sy, third_w, 24, "ERASE", [this]() {
+    buttons.emplace_back(sx + third_w + 6, sy, third_w, 22, "ERASE", [this]() {
         current_tool = ToolMode::ERASE;
         status_msg = "Tool: Erase cells.";
     });
     idx_erase = (int)buttons.size() - 1;
 
-    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 24, "STAMP", [this]() {
+    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 22, "STAMP", [this]() {
         current_tool = ToolMode::STAMP;
         status_msg = "Tool: Stamp pattern (Click on canvas to place).";
     });
     idx_stamp = (int)buttons.size() - 1;
-    sy += 28;
+    sy += 26;
 
     // Brush sizes
-    buttons.emplace_back(sx, sy, third_w, 20, "Size 1", [this]() {
+    buttons.emplace_back(sx, sy, third_w, 20, "1x1", [this]() {
         brush_radius = 0;
         status_msg = "Brush size: 1x1.";
     });
-    buttons.emplace_back(sx + third_w + 6, sy, third_w, 20, "Size 3", [this]() {
-        brush_radius = 1;
-        status_msg = "Brush size: 3x3.";
-    });
-    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 20, "Size 5", [this]() {
+    idx_brush_sizes.push_back((int)buttons.size() - 1);
+
+    buttons.emplace_back(sx + third_w + 6, sy, third_w, 20, "5x5", [this]() {
         brush_radius = 2;
         status_msg = "Brush size: 5x5.";
     });
-    sy += 28;
+    idx_brush_sizes.push_back((int)buttons.size() - 1);
+
+    buttons.emplace_back(sx + (third_w + 6) * 2, sy, third_w, 20, "15x15", [this]() {
+        brush_radius = 7;
+        status_msg = "Brush size: 15x15.";
+    });
+    idx_brush_sizes.push_back((int)buttons.size() - 1);
+    sy += 26;
 
     // --- Section 5: Pattern Stamps ---
     section_labels.push_back({ "--- PATTERN STAMP LIBRARY ---", sy });
@@ -217,40 +221,63 @@ void GUI::update_layout(int win_w, int win_h) {
 
     for (size_t i = 0; i < patterns.size(); ++i) {
         int px = (i % 2 == 0) ? sx : sx + half_w + 8;
-        int py = sy + (int)(i / 2) * 26;
+        int py = sy + (int)(i / 2) * 24;
 
-        buttons.emplace_back(px, py, half_w, 22, patterns[i].name, [this, i]() {
+        buttons.emplace_back(px, py, half_w, 20, patterns[i].name, [this, i]() {
             current_tool = ToolMode::STAMP;
             selected_pattern_idx = (int)i;
             status_msg = "Selected: " + patterns[i].name + ". Click canvas to place!";
         });
     }
-    sy += ((int)(patterns.size() + 1) / 2) * 26 + 10;
+    sy += ((int)(patterns.size() + 1) / 2) * 24 + 8;
 
     // --- Section 6: Engine Selection ---
     section_labels.push_back({ "--- COMPUTE ENGINE ---", sy });
     sy += 14;
 
-    buttons.emplace_back(sx, sy, full_w, 26, "SWITCH ENGINE", [this]() {
+    buttons.emplace_back(sx, sy, full_w, 24, "SWITCH ENGINE", [this]() {
         if (on_toggle_engine) on_toggle_engine();
     });
     idx_engine = (int)buttons.size() - 1;
-    sy += 32;
+    sy += 28;
+
+    // Dedicated space for engine note text
+    engine_note_y = sy;
+    sy += 18;
 
     // --- Section 7: Camera & View ---
     section_labels.push_back({ "--- CAMERA / VIEW ---", sy });
     sy += 14;
 
     buttons.emplace_back(sx, sy, half_w, 22, "RESET VIEW", [this]() {
-        zoom = 1.0f;
-        pan_x = 0.0f;
-        pan_y = 0.0f;
+        if (on_reset_view) on_reset_view();
+        else reset_view(current_grid_w, current_grid_h);
         status_msg = "View reset to 100% centered.";
     });
     buttons.emplace_back(sx + half_w + 8, sy, half_w, 22, "FIT CANVAS", [this]() {
-        if (on_reset_view) on_reset_view();
-        status_msg = "Fit grid to canvas view.";
+        if (on_fit_canvas) on_fit_canvas();
+        else fit_to_canvas(current_grid_w, current_grid_h);
+        status_msg = "Fit entire grid inside canvas.";
     });
+    sy += 26;
+}
+
+void GUI::fit_to_canvas(int grid_w, int grid_h) {
+    if (grid_w <= 0 || grid_h <= 0 || canvas_rect.w <= 0 || canvas_rect.h <= 0) return;
+    float zoom_w = 1.0f;
+    float zoom_h = ((float)canvas_rect.h / (float)canvas_rect.w) * ((float)grid_w / (float)grid_h);
+    zoom = std::min(zoom_w, zoom_h);
+
+    float rendered_w = (float)canvas_rect.w * zoom;
+    float rendered_h = (float)grid_h * ((float)canvas_rect.w / (float)grid_w) * zoom;
+    pan_x = ((float)canvas_rect.w - rendered_w) / 2.0f;
+    pan_y = ((float)canvas_rect.h - rendered_h) / 2.0f;
+}
+
+void GUI::reset_view(int grid_w, int grid_h) {
+    zoom = 1.0f;
+    pan_x = 0.0f;
+    pan_y = 0.0f;
 }
 
 bool GUI::handle_event(const SDL_Event& e) {
@@ -325,7 +352,7 @@ void GUI::screen_to_grid(int screen_x, int screen_y, int grid_w, int grid_h, int
 }
 
 void GUI::grid_to_screen(int grid_x, int grid_y, int& screen_x, int& screen_y) const {
-    float cell_size = (float)canvas_rect.w / 512.0f * zoom;
+    float cell_size = (float)canvas_rect.w / (float)current_grid_w * zoom;
     screen_x = canvas_rect.x + (int)(pan_x + (float)grid_x * cell_size);
     screen_y = canvas_rect.y + (int)(pan_y + (float)grid_y * cell_size);
 }
@@ -344,6 +371,16 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
     }
     if (idx_stamp >= 0 && idx_stamp < (int)buttons.size()) {
         buttons[idx_stamp].is_active = (current_tool == ToolMode::STAMP);
+    }
+    for (size_t i = 0; i < idx_brush_sizes.size(); ++i) {
+        int idx = idx_brush_sizes[i];
+        if (idx >= 0 && idx < (int)buttons.size()) {
+            bool active = false;
+            if (i == 0 && brush_radius == 0) active = true;
+            if (i == 1 && brush_radius == 2) active = true;
+            if (i == 2 && brush_radius == 7) active = true;
+            buttons[idx].is_active = active;
+        }
     }
     for (size_t i = 0; i < idx_grid_sizes.size() && i < grid_size_presets.size(); ++i) {
         int idx = idx_grid_sizes[i];
@@ -399,29 +436,24 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
         font.draw_text(label.title, label_x, label.y, UITheme::TEXT_MUTED, 1);
     }
 
-    // Engine status description note
-    std::string engine_desc = cuda_capable ? "CUDA Hardware Acceleration Active" : "Multi-Threaded CPU Engine (OpenMP)";
-    int engine_note_y = sidebar_rect.y + 490;
-    if (idx_engine >= 0 && idx_engine < (int)buttons.size()) {
-        engine_note_y = buttons[idx_engine].rect.y + buttons[idx_engine].rect.h + 4;
-    }
+    // Engine status description note (rendered at dedicated non-overlapping engine_note_y)
+    std::string engine_desc = cuda_capable ? "CUDA Acceleration Active" : "Multi-Threaded CPU (OpenMP)";
     font.draw_text(engine_desc, label_x, engine_note_y, UITheme::TEXT_MUTED, 1);
 
     // Keyboard Shortcuts Box at bottom of sidebar (if space permits)
-    int help_y = sidebar_rect.y + sidebar_rect.h - 96;
-    if (help_y > 540) {
-        SDL_Rect help_rect = { label_x, help_y, sidebar_rect.w - 28, 88 };
+    int help_h = 68;
+    int help_y = sidebar_rect.y + sidebar_rect.h - help_h - 6;
+    if (help_y > engine_note_y + 44) {
+        SDL_Rect help_rect = { label_x, help_y, sidebar_rect.w - 28, help_h };
         SDL_SetRenderDrawColor(renderer, 20, 20, 26, 255);
         SDL_RenderFillRect(renderer, &help_rect);
         SDL_SetRenderDrawColor(renderer, UITheme::PANEL_BORDER.r, UITheme::PANEL_BORDER.g, UITheme::PANEL_BORDER.b, 255);
         SDL_RenderDrawRect(renderer, &help_rect);
 
-        font.draw_text("QUICK SHORTCUTS:", label_x + 8, help_y + 8, UITheme::ACCENT_AMBER, 1);
-        font.draw_text("[Space] Play/Pause | [S] Step", label_x + 8, help_y + 22, UITheme::TEXT_NORMAL, 1);
-        font.draw_text("[R] Randomize | [C] Clear Grid", label_x + 8, help_y + 36, UITheme::TEXT_NORMAL, 1);
-        font.draw_text("[1-5] Quick Grid Presets", label_x + 8, help_y + 50, UITheme::ACCENT_GREEN, 1);
-        font.draw_text("Right-Click: Erase | Wheel: Zoom", label_x + 8, help_y + 64, UITheme::TEXT_MUTED, 1);
-        font.draw_text("Middle-Click & Drag: Pan View", label_x + 8, help_y + 76, UITheme::TEXT_MUTED, 1);
+        font.draw_text("QUICK SHORTCUTS:", label_x + 8, help_y + 6, UITheme::ACCENT_AMBER, 1);
+        font.draw_text("[Space] Play/Pause | [S] Step", label_x + 8, help_y + 18, UITheme::TEXT_NORMAL, 1);
+        font.draw_text("[R] Random | [C] Clear | [1-6] Grids", label_x + 8, help_y + 30, UITheme::TEXT_NORMAL, 1);
+        font.draw_text("Wheel: Zoom | Drag: Pan Canvas", label_x + 8, help_y + 44, UITheme::TEXT_MUTED, 1);
     }
 
     // Draw all sidebar buttons

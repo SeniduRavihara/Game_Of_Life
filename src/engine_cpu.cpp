@@ -18,43 +18,63 @@ bool CPUEngine::init(int w, int h) {
     return true;
 }
 
-#if defined(__clang__)
-#define UNROLL_3 _Pragma("unroll 3")
-#elif defined(__GNUC__)
-#define UNROLL_3 _Pragma("GCC unroll 3")
-#else
-#define UNROLL_3
-#endif
-
 void CPUEngine::step() {
+    int alive_count = 0;
+
     #ifdef _OPENMP
-    #pragma omp parallel for collapse(2) schedule(static)
+    #pragma omp parallel for schedule(static) reduction(+:alive_count)
     #endif
     for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            int alive_neighbors = 0;
+        int row_above = (y == 0 ? height - 1 : y - 1) * width;
+        int row_curr  = y * width;
+        int row_below = (y == height - 1 ? 0 : y + 1) * width;
 
-            UNROLL_3
-            for (int dy = -1; dy <= 1; ++dy) {
-                int ny = (y + dy + height) % height;
-                int row_offset = ny * width;
+        const unsigned char* p_above = &current_state[row_above];
+        const unsigned char* p_curr  = &current_state[row_curr];
+        const unsigned char* p_below = &current_state[row_below];
+        unsigned char* p_next        = &next_state[row_curr];
 
-                UNROLL_3
-                for (int dx = -1; dx <= 1; ++dx) {
-                    if (dx == 0 && dy == 0) continue;
-                    int nx = (x + dx + width) % width;
-                    alive_neighbors += current_state[row_offset + nx];
-                }
-            }
+        // Left border (x = 0)
+        {
+            int neighbors = p_above[width - 1] + p_above[0] + p_above[1]
+                          + p_curr[width - 1]               + p_curr[1]
+                          + p_below[width - 1] + p_below[0] + p_below[1];
+            unsigned char c = p_curr[0];
+            unsigned char next_c = (neighbors == 3 || (c == 1 && neighbors == 2)) ? 1 : 0;
+            p_next[0] = next_c;
+            alive_count += next_c;
+        }
 
-            int idx = y * width + x;
-            unsigned char cell = current_state[idx];
-            next_state[idx] = (alive_neighbors == 3 || (cell == 1 && alive_neighbors == 2)) ? 1 : 0;
+        // Fast inner loop: 0 modulos, sequential cache access, auto-vectorizable
+        #if defined(__GNUC__) || defined(__clang__)
+        #pragma GCC ivdep
+        #endif
+        for (int x = 1; x < width - 1; ++x) {
+            int neighbors = p_above[x - 1] + p_above[x] + p_above[x + 1]
+                          + p_curr[x - 1]               + p_curr[x + 1]
+                          + p_below[x - 1] + p_below[x] + p_below[x + 1];
+            unsigned char c = p_curr[x];
+            unsigned char next_c = (neighbors == 3 || (c == 1 && neighbors == 2)) ? 1 : 0;
+            p_next[x] = next_c;
+            alive_count += next_c;
+        }
+
+        // Right border (x = width - 1)
+        {
+            int x = width - 1;
+            int neighbors = p_above[x - 1] + p_above[x] + p_above[0]
+                          + p_curr[x - 1]               + p_curr[0]
+                          + p_below[x - 1] + p_below[x] + p_below[0];
+            unsigned char c = p_curr[x];
+            unsigned char next_c = (neighbors == 3 || (c == 1 && neighbors == 2)) ? 1 : 0;
+            p_next[x] = next_c;
+            alive_count += next_c;
         }
     }
 
     std::swap(current_state, next_state);
-    pop_dirty = true;
+    population = alive_count;
+    pop_dirty = false;
 }
 
 void CPUEngine::clear() {
