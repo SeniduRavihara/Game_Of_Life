@@ -91,6 +91,7 @@ public:
     int idx_stamp = -1;
     int idx_engine = -1;
     int engine_note_y = 0;
+    int sidebar_content_bottom = 0;
     std::vector<int> idx_brush_sizes;
     std::vector<int> idx_grid_sizes;
     std::vector<std::pair<int, int>> grid_size_presets = {

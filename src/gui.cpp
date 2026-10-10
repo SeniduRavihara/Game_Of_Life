@@ -285,6 +285,8 @@ void GUI::update_layout(int win_w, int win_h) {
         status_msg = "Fit entire grid inside canvas.";
     });
     sy += 26;
+
+    sidebar_content_bottom = sy;
 }
 
 void GUI::fit_to_canvas(int grid_w, int grid_h) {
@@ -426,7 +428,7 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
     font.draw_text("CONWAY'S GAME OF LIFE", 14, 11, UITheme::TEXT_TITLE, 2);
 
     // Engine Badge
-    int badge_x = 340;
+    int badge_x = 370;
     SDL_Rect badge_rect = { badge_x, 7, 240, 22 };
     SDL_SetRenderDrawColor(renderer, 32, 40, 48, 255);
     SDL_RenderFillRect(renderer, &badge_rect);
@@ -466,9 +468,9 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
     font.draw_text(engine_desc, label_x, engine_note_y, UITheme::TEXT_MUTED, 1);
 
     // Keyboard Shortcuts Box at bottom of sidebar (if space permits)
-    int help_h = 68;
+    int help_h = 76;
     int help_y = sidebar_rect.y + sidebar_rect.h - help_h - 6;
-    if (help_y > engine_note_y + 44) {
+    if (help_y > sidebar_content_bottom + 10) {
         SDL_Rect help_rect = { label_x, help_y, sidebar_rect.w - 28, help_h };
         SDL_SetRenderDrawColor(renderer, 20, 20, 26, 255);
         SDL_RenderFillRect(renderer, &help_rect);
@@ -476,9 +478,10 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
         SDL_RenderDrawRect(renderer, &help_rect);
 
         font.draw_text("QUICK SHORTCUTS:", label_x + 8, help_y + 6, UITheme::ACCENT_AMBER, 1);
-        font.draw_text("[Space] Play/Pause | [S] Step", label_x + 8, help_y + 18, UITheme::TEXT_NORMAL, 1);
-        font.draw_text("[R] Random | [C] Clear | [1-6] Grids", label_x + 8, help_y + 30, UITheme::TEXT_NORMAL, 1);
-        font.draw_text("Wheel: Zoom | Drag: Pan Canvas", label_x + 8, help_y + 44, UITheme::TEXT_MUTED, 1);
+        font.draw_text("[Space] Play/Pause | [S] Step", label_x + 8, help_y + 20, UITheme::TEXT_NORMAL, 1);
+        font.draw_text("[R] Random | [C] Clear", label_x + 8, help_y + 32, UITheme::TEXT_NORMAL, 1);
+        font.draw_text("[1-6] Grids | Wheel: Zoom", label_x + 8, help_y + 44, UITheme::TEXT_NORMAL, 1);
+        font.draw_text("Middle Drag: Pan Canvas", label_x + 8, help_y + 56, UITheme::TEXT_MUTED, 1);
     }
 
     // Draw all sidebar buttons
@@ -563,7 +566,7 @@ void GUI::draw_benchmark_overlay(SDL_Renderer* renderer, FontRenderer& font) {
             speedup_str = buf;
         }
 
-        snprintf(buf, sizeof(buf), "%-10s | %4dx%-4d | %10.1f | %6.2fms | %7s | %6.1f",
+        snprintf(buf, sizeof(buf), "%-10s | %4dx%-5d | %10.1f | %6.2fms | %7s | %6.1f",
             res.engine_name.c_str(), res.grid_w, res.grid_h, res.gen_per_sec, res.step_ms, speedup_str.c_str(), res.memory_mb);
 
         SDL_Color row_color = UITheme::TEXT_NORMAL;
