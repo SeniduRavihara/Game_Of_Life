@@ -35,10 +35,11 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "Compiling game_of_life.exe with MinGW..."
-          g++ -std=c++14 -O3 -Wall \
+          g++ -std=c++14 -O3 -Wall -fopenmp \
               -Iinclude \
               src/font8x8.cpp \
               src/gui.cpp \
+              src/benchmark.cpp \
               src/engine_cpu.cpp \
               src/engine_factory.cpp \
               src/main.cpp \
@@ -99,6 +100,7 @@ jobs:
               -I"$SDL_PREFIX/include/SDL2" \
               src/font8x8.cpp \
               src/gui.cpp \
+              src/benchmark.cpp \
               src/engine_cpu.cpp \
               src/engine_factory.cpp \
               src/main.cpp \

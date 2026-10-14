@@ -1,0 +1,5 @@
+Ranks,RanksX,RanksY,GridWidth,GridHeight,TotalCells,Iterations,StepTime_ms,GenPerSec,Throughput_MCellsSec,Imbalance_pct,FinalPopulation
+1,1,1,1024,1024,1048576,100,3.312,3e+02,3.2e+02,0,93495
+2,1,2,1024,1024,1048576,100,1.704,5.9e+02,6.2e+02,1.8e-06,93495
+4,2,2,1024,1024,1048576,100,1.026,9.7e+02,1e+03,0.0026,93495
+6,2,3,1024,1024,1048576,100,0.9543,1e+03,1.1e+03,0.96,93495

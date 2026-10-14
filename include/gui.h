@@ -140,9 +140,17 @@ public:
     std::function<void()> on_fit_canvas;
     std::function<void(int new_w, int new_h)> on_change_grid_size;
     std::function<void()> on_run_benchmark;
+    std::function<void()> on_run_thread_benchmark;
 
     // Benchmark state
+    enum class BenchmarkViewMode {
+        CPU_VS_GPU,
+        THREAD_SCALING
+    };
+
     BenchmarkSuite bench_suite;
+    ThreadBenchmarkSuite thread_bench_suite;
+    BenchmarkViewMode bench_view_mode = BenchmarkViewMode::CPU_VS_GPU;
     bool show_bench_overlay = false;
 
     GUI();

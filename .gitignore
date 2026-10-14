@@ -8,6 +8,7 @@ bin/
 *.so
 game_of_life
 game_of_life_cpu
+game_of_life_mpi
 
 # Editor and IDE configurations
 .vscode/

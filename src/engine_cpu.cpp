@@ -18,11 +18,30 @@ bool CPUEngine::init(int w, int h) {
     return true;
 }
 
+void CPUEngine::set_num_threads(int threads) {
+    num_threads = std::max(0, threads);
+}
+
+int CPUEngine::get_num_threads() const {
+    if (num_threads > 0) return num_threads;
+    #ifdef _OPENMP
+    return omp_get_max_threads();
+    #else
+    return 1;
+    #endif
+}
+
+std::string CPUEngine::get_name() const {
+    int t = get_num_threads();
+    return "CPU (OpenMP, " + std::to_string(t) + (t == 1 ? " thread)" : " threads)");
+}
+
 void CPUEngine::step() {
     int alive_count = 0;
+    int nthreads = get_num_threads();
 
     #ifdef _OPENMP
-    #pragma omp parallel for schedule(static) reduction(+:alive_count)
+    #pragma omp parallel for schedule(static) reduction(+:alive_count) num_threads(nthreads)
     #endif
     for (int y = 0; y < height; ++y) {
         int row_above = (y == 0 ? height - 1 : y - 1) * width;
@@ -84,8 +103,9 @@ void CPUEngine::clear() {
 }
 
 void CPUEngine::randomize(int alive_prob, unsigned int seed) {
+    int nthreads = get_num_threads();
     #ifdef _OPENMP
-    #pragma omp parallel
+    #pragma omp parallel num_threads(nthreads)
     {
         int tid = omp_get_thread_num();
         unsigned int local_seed = seed + tid * 1013904223u;
@@ -139,8 +159,9 @@ void CPUEngine::spawn_pattern(int cx, int cy, const Pattern& pattern) {
 }
 
 const unsigned int* CPUEngine::get_pixels() {
+    int nthreads = get_num_threads();
     #ifdef _OPENMP
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static) num_threads(nthreads)
     #endif
     for (int i = 0; i < width * height; ++i) {
         pixels[i] = (current_state[i] != 0) ? COLOR_ALIVE : COLOR_DEAD;
@@ -151,8 +172,9 @@ const unsigned int* CPUEngine::get_pixels() {
 int CPUEngine::get_population() {
     if (pop_dirty) {
         int pop = 0;
+        int nthreads = get_num_threads();
         #ifdef _OPENMP
-        #pragma omp parallel for reduction(+:pop) schedule(static)
+        #pragma omp parallel for reduction(+:pop) schedule(static) num_threads(nthreads)
         #endif
         for (int i = 0; i < width * height; ++i) {
             pop += current_state[i];

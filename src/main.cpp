@@ -22,32 +22,150 @@
 #include "benchmark.h"
 #include <thread>
 #include <mutex>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+static std::vector<int> get_scaling_thread_counts() {
+    int max_t = 1;
+    #ifdef _OPENMP
+    max_t = omp_get_max_threads();
+    #endif
+    std::vector<int> t_counts;
+    for (int t = 1; t <= max_t; t *= 2) {
+        t_counts.push_back(t);
+    }
+    // Include 6 for 6-core 12-thread architectures
+    if (max_t == 12 && std::find(t_counts.begin(), t_counts.end(), 6) == t_counts.end()) {
+        t_counts.push_back(6);
+    }
+    if (std::find(t_counts.begin(), t_counts.end(), max_t) == t_counts.end()) {
+        t_counts.push_back(max_t);
+    }
+    std::sort(t_counts.begin(), t_counts.end());
+    return t_counts;
+}
 
 int main(int argc, char* argv[]) {
     std::cout << "========================================================\n"
-              << "       Conway's Game of Life - Interactive GUI\n"
+              << "       Conway's Game of Life - HPC Accelerated\n"
               << "========================================================\n";
 
-    // 1. Grid Resolution (defaults to 512x512)
+    // 1. Parse Command-Line Options
     int grid_w = 512;
     int grid_h = 512;
-    if (argc >= 3) {
-        grid_w = std::atoi(argv[1]);
-        grid_h = std::atoi(argv[2]);
+    int user_thread_limit = 0;
+    bool run_bench_threads_cli = false;
+    bool run_bench_weak_cli = false;
+    bool run_bench_cg_cli = false;
+    bool run_bench_all_cli = false;
+    std::string custom_csv_file = "";
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--help" || arg == "-h") {
+            std::cout << "Usage: " << argv[0] << " [options] [width] [height]\n\n"
+                      << "Simulation Options:\n"
+                      << "  [width] [height]           Initial grid resolution (default: 512 512)\n"
+                      << "  --threads, -t <n>          Lock CPU engine to <n> OpenMP threads\n\n"
+                      << "HPC Benchmarking Options (Headless Mode - No GUI / X11 Required):\n"
+                      << "  --bench-threads [w] [h]    Run OpenMP strong thread scaling benchmark (default: 1024x1024)\n"
+                      << "  --bench-weak [base_dim]    Run OpenMP weak thread scaling benchmark (default: 512)\n"
+                      << "  --bench-cg                 Run CPU vs CUDA GPU benchmark across resolution presets\n"
+                      << "  --bench-all                Run CPU vs GPU + Strong + Weak scaling benchmarks\n"
+                      << "  --csv <filename>           Custom CSV export filepath\n"
+                      << "  --help, -h                 Display this help menu\n\n";
+            return 0;
+        } else if (arg == "--bench-threads" || arg == "--bench-strong") {
+            run_bench_threads_cli = true;
+            if (i + 2 < argc && argv[i+1][0] != '-' && argv[i+2][0] != '-') {
+                grid_w = std::atoi(argv[++i]);
+                grid_h = std::atoi(argv[++i]);
+            }
+        } else if (arg == "--bench-weak") {
+            run_bench_weak_cli = true;
+            if (i + 1 < argc && argv[i+1][0] != '-') {
+                grid_w = std::atoi(argv[++i]);
+            }
+        } else if (arg == "--bench-cg") {
+            run_bench_cg_cli = true;
+        } else if (arg == "--bench-all") {
+            run_bench_all_cli = true;
+        } else if (arg == "--csv") {
+            if (i + 1 < argc) custom_csv_file = argv[++i];
+        } else if (arg == "--threads" || arg == "-t") {
+            if (i + 1 < argc) user_thread_limit = std::atoi(argv[++i]);
+        } else if (i == 1 && argc >= 3 && argv[1][0] != '-' && argv[2][0] != '-') {
+            grid_w = std::atoi(argv[1]);
+            grid_h = std::atoi(argv[2]);
+            ++i;
+        }
     }
+
     if (grid_w <= 0) grid_w = 512;
     if (grid_h <= 0) grid_h = 512;
 
-    std::cout << "[INFO] Simulation Grid Size: " << grid_w << " x " << grid_h << "\n";
-
-    // 2. Hardware Acceleration Check & Simulation Engine Initialization
     bool has_cuda = is_cuda_available();
+    std::vector<int> thread_counts = get_scaling_thread_counts();
+
+    // 2. Headless CLI Benchmarking Mode (Runs on HPC Clusters without X11)
+    if (run_bench_all_cli || run_bench_threads_cli || run_bench_weak_cli || run_bench_cg_cli) {
+        std::cout << "[HPC BENCHMARK MODE] Running without GUI display...\n";
+        std::cout << "[INFO] CUDA GPU Acceleration: " << (has_cuda ? "Available" : "Not Detected") << "\n";
+        #ifdef _OPENMP
+        std::cout << "[INFO] OpenMP Hardware Threads Detected: " << omp_get_max_threads() << "\n";
+        #else
+        std::cout << "[INFO] OpenMP: Not compiled in (Serial CPU)\n";
+        #endif
+
+        if (run_bench_all_cli || run_bench_cg_cli) {
+            std::cout << "\n>>> Starting CPU vs GPU Benchmark across standard resolutions...\n";
+            std::vector<std::pair<int,int>> sizes = {
+                {256, 256}, {512, 512}, {1024, 1024}, {2048, 2048}, {4096, 4096}
+            };
+            BenchmarkSuite suite;
+            BenchmarkRunner::run(sizes, has_cuda, &suite);
+            BenchmarkRunner::print_cpu_gpu_console(suite.results);
+            std::string csv_path = custom_csv_file.empty() ? "benchmark_cpu_gpu.csv" : custom_csv_file;
+            BenchmarkRunner::export_cpu_gpu_csv(csv_path, suite.results);
+        }
+
+        if (run_bench_all_cli || run_bench_threads_cli) {
+            std::cout << "\n>>> Starting OpenMP Strong Thread Scaling Benchmark (" << grid_w << "x" << grid_h << ")...\n";
+            ThreadBenchmarkSuite suite;
+            BenchmarkRunner::run_strong_scaling(grid_w, grid_h, thread_counts, &suite);
+            BenchmarkRunner::print_thread_scaling_console(suite.results, "OPENMP STRONG THREAD SCALING (" + std::to_string(grid_w) + "x" + std::to_string(grid_h) + ")");
+            std::string csv_path = custom_csv_file.empty() ? "benchmark_thread_scaling.csv" : custom_csv_file;
+            BenchmarkRunner::export_thread_scaling_csv(csv_path, suite.results, "Strong Scaling");
+        }
+
+        if (run_bench_all_cli || run_bench_weak_cli) {
+            int base_dim = (grid_w > 0) ? grid_w : 512;
+            std::cout << "\n>>> Starting OpenMP Weak Thread Scaling Benchmark (Base: " << base_dim << "x" << base_dim << " per thread)...\n";
+            ThreadBenchmarkSuite suite;
+            BenchmarkRunner::run_weak_scaling(base_dim, thread_counts, &suite);
+            BenchmarkRunner::print_thread_scaling_console(suite.results, "OPENMP WEAK THREAD SCALING (Base: " + std::to_string(base_dim) + "x" + std::to_string(base_dim) + "/thread)");
+            std::string csv_path = custom_csv_file.empty() ? "benchmark_weak_scaling.csv" : custom_csv_file;
+            BenchmarkRunner::export_thread_scaling_csv(csv_path, suite.results, "Weak Scaling");
+        }
+
+        std::cout << "[SUCCESS] All requested benchmarks completed cleanly.\n";
+        return 0;
+    }
+
+    // 3. Interactive Graphical Mode
+    std::cout << "[INFO] Simulation Grid Size: " << grid_w << " x " << grid_h << "\n";
     std::cout << "[INFO] CUDA GPU Acceleration: " << (has_cuda ? "Available" : "Not Detected") << "\n";
 
     std::unique_ptr<SimulationEngine> engine = create_simulation_engine(has_cuda, grid_w, grid_h);
     if (!engine) {
         std::cerr << "[ERROR] Could not initialize simulation engine!\n";
         return 1;
+    }
+
+    if (user_thread_limit > 0) {
+        engine->set_num_threads(user_thread_limit);
+        std::cout << "[INFO] CPU Thread count locked to: " << user_thread_limit << "\n";
     }
 
     // Seed initial state
@@ -199,8 +317,25 @@ int main(int argc, char* argv[]) {
 
         std::thread([&, was_running, sizes]() {
             BenchmarkRunner::run(sizes, has_cuda, &gui.bench_suite);
+            BenchmarkRunner::export_cpu_gpu_csv("benchmark_cpu_gpu.csv", gui.bench_suite.results);
             gui.is_running = was_running;
-            gui.status_msg = "Benchmark complete! See overlay panel.";
+            gui.status_msg = "CPU vs GPU benchmark complete! Saved to benchmark_cpu_gpu.csv";
+        }).detach();
+    };
+
+    gui.on_run_thread_benchmark = [&]() {
+        bool was_running = gui.is_running;
+        gui.is_running = false; // Pause during benchmark
+
+        int bench_w = grid_w;
+        int bench_h = grid_h;
+        std::vector<int> t_counts = thread_counts;
+
+        std::thread([&, was_running, bench_w, bench_h, t_counts]() {
+            BenchmarkRunner::run_strong_scaling(bench_w, bench_h, t_counts, &gui.thread_bench_suite);
+            BenchmarkRunner::export_thread_scaling_csv("benchmark_thread_scaling.csv", gui.thread_bench_suite.results, "Strong Scaling");
+            gui.is_running = was_running;
+            gui.status_msg = "Thread scaling complete! Saved to benchmark_thread_scaling.csv";
         }).detach();
     };
 

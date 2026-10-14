@@ -250,22 +250,43 @@ void GUI::update_layout(int win_w, int win_h) {
     section_labels.push_back({ "--- BENCHMARK ---", sy });
     sy += 14;
 
-    buttons.emplace_back(sx, sy, full_w, 24, "RUN CPU vs GPU BENCH", [this]() {
+    buttons.emplace_back(sx, sy, half_w, 22, "CPU vs GPU", [this]() {
         bool running = false;
         {
             std::lock_guard<std::mutex> lock(bench_suite.mtx);
             running = bench_suite.is_running;
         }
         if (!running) {
+            bench_view_mode = BenchmarkViewMode::CPU_VS_GPU;
             show_bench_overlay = true;
             if (on_run_benchmark) on_run_benchmark();
         }
     });
     buttons.back().override_color = UITheme::BTN_ACTIVE;
     buttons.back().custom_color = true;
-    sy += 28;
 
-    buttons.emplace_back(sx, sy, full_w, 20, "CLOSE RESULTS", [this]() {
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 22, "THREAD SCALE", [this]() {
+        bool running = false;
+        {
+            std::lock_guard<std::mutex> lock(thread_bench_suite.mtx);
+            running = thread_bench_suite.is_running;
+        }
+        if (!running) {
+            bench_view_mode = BenchmarkViewMode::THREAD_SCALING;
+            show_bench_overlay = true;
+            if (on_run_thread_benchmark) on_run_thread_benchmark();
+        }
+    });
+    buttons.back().override_color = UITheme::ACCENT_AMBER;
+    buttons.back().custom_color = true;
+    sy += 26;
+
+    buttons.emplace_back(sx, sy, half_w, 20, "VIEW MODE", [this]() {
+        bench_view_mode = (bench_view_mode == BenchmarkViewMode::CPU_VS_GPU)
+            ? BenchmarkViewMode::THREAD_SCALING : BenchmarkViewMode::CPU_VS_GPU;
+    });
+
+    buttons.emplace_back(sx + half_w + 8, sy, half_w, 20, "CLOSE", [this]() {
         show_bench_overlay = false;
     });
     sy += 24;
@@ -526,63 +547,122 @@ void GUI::draw(SDL_Renderer* renderer, FontRenderer& font, unsigned long long ge
 
 void GUI::draw_benchmark_overlay(SDL_Renderer* renderer, FontRenderer& font) {
     // Darken canvas
-    SDL_SetRenderDrawColor(renderer, 10, 10, 15, 230);
+    SDL_SetRenderDrawColor(renderer, 10, 10, 15, 235);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_RenderFillRect(renderer, &canvas_rect);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
     int cx = canvas_rect.x + canvas_rect.w / 2;
-    int cy = canvas_rect.y + 40;
+    int cy = canvas_rect.y + 30;
 
-    font.draw_text_centered("BENCHMARK RESULTS", cx, cy, UITheme::TEXT_TITLE, 2);
-    cy += 40;
+    if (bench_view_mode == BenchmarkViewMode::CPU_VS_GPU) {
+        font.draw_text_centered("BENCHMARK: CPU vs CUDA GPU", cx, cy, UITheme::TEXT_TITLE, 2);
+        cy += 35;
+        font.draw_text_centered("[ Click 'VIEW MODE' to switch to OpenMP Thread Scaling ]", cx, cy, UITheme::TEXT_MUTED, 1);
+        cy += 25;
 
-    std::string header = "ENGINE     | GRID       | GEN/S      | ms/step | SPEEDUP | MEM(MB)";
-    std::string sep    = "-----------+------------+------------+---------+---------+--------";
-    font.draw_text_centered(header, cx, cy, UITheme::TEXT_NORMAL, 1); cy += 20;
-    font.draw_text_centered(sep, cx, cy, UITheme::TEXT_MUTED, 1); cy += 20;
+        std::string header = "ENGINE     | GRID       | GEN/S      | ms/step | SPEEDUP | MEM(MB)";
+        std::string sep    = "-----------+------------+------------+---------+---------+--------";
+        font.draw_text_centered(header, cx, cy, UITheme::TEXT_NORMAL, 1); cy += 20;
+        font.draw_text_centered(sep, cx, cy, UITheme::TEXT_MUTED, 1); cy += 20;
 
-    std::vector<BenchmarkResult> results_copy;
-    bool is_running = false;
-    bool is_done = false;
-    int current_step = 0;
-    int total_steps = 0;
-    {
-        std::lock_guard<std::mutex> lock(bench_suite.mtx);
-        results_copy = bench_suite.results;
-        is_running = bench_suite.is_running;
-        is_done = bench_suite.is_done;
-        current_step = bench_suite.current_step;
-        total_steps = bench_suite.total_steps;
-    }
-
-    int start_x = cx - font.get_text_width(header, 1) / 2;
-
-    for (const auto& res : results_copy) {
-        char buf[128];
-        std::string speedup_str = "-";
-        if (res.speedup > 0) {
-            snprintf(buf, sizeof(buf), "%5.1fx", res.speedup);
-            speedup_str = buf;
+        std::vector<BenchmarkResult> results_copy;
+        bool is_running = false;
+        bool is_done = false;
+        int current_step = 0;
+        int total_steps = 0;
+        {
+            std::lock_guard<std::mutex> lock(bench_suite.mtx);
+            results_copy = bench_suite.results;
+            is_running = bench_suite.is_running;
+            is_done = bench_suite.is_done;
+            current_step = bench_suite.current_step;
+            total_steps = bench_suite.total_steps;
         }
 
-        snprintf(buf, sizeof(buf), "%-10s | %4dx%-5d | %10.1f | %6.2fms | %7s | %6.1f",
-            res.engine_name.c_str(), res.grid_w, res.grid_h, res.gen_per_sec, res.step_ms, speedup_str.c_str(), res.memory_mb);
+        int start_x = cx - font.get_text_width(header, 1) / 2;
 
-        SDL_Color row_color = UITheme::TEXT_NORMAL;
-        if (res.engine_name == "CUDA GPU") row_color = UITheme::ACCENT_GREEN;
-        else if (res.engine_name == "CPU") row_color = UITheme::ACCENT_BLUE;
+        for (const auto& res : results_copy) {
+            char buf[128];
+            std::string speedup_str = "-";
+            if (res.speedup > 0) {
+                snprintf(buf, sizeof(buf), "%5.1fx", res.speedup);
+                speedup_str = buf;
+            }
 
-        font.draw_text(buf, start_x, cy, row_color, 1);
-        cy += 20;
-    }
+            snprintf(buf, sizeof(buf), "%-10s | %4dx%-5d | %10.1f | %6.2fms | %7s | %6.1f",
+                res.engine_name.c_str(), res.grid_w, res.grid_h, res.gen_per_sec, res.step_ms, speedup_str.c_str(), res.memory_mb);
 
-    cy += 20;
-    if (is_running) {
-        char buf[64];
-        snprintf(buf, sizeof(buf), "RUNNING... [ %d / %d tests complete ]", current_step, total_steps);
-        font.draw_text_centered(buf, cx, cy, UITheme::ACCENT_AMBER, 1);
-    } else if (is_done) {
-        font.draw_text_centered("BENCHMARK COMPLETE", cx, cy, UITheme::TEXT_TITLE, 1);
+            SDL_Color row_color = UITheme::TEXT_NORMAL;
+            if (res.engine_name == "CUDA GPU") row_color = UITheme::ACCENT_GREEN;
+            else if (res.engine_name == "CPU") row_color = UITheme::ACCENT_BLUE;
+
+            font.draw_text(buf, start_x, cy, row_color, 1);
+            cy += 20;
+        }
+
+        cy += 15;
+        if (is_running) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "RUNNING... [ %d / %d tests complete ]", current_step, total_steps);
+            font.draw_text_centered(buf, cx, cy, UITheme::ACCENT_AMBER, 1);
+        } else if (is_done) {
+            font.draw_text_centered("BENCHMARK COMPLETE (Saved to benchmark_cpu_gpu.csv)", cx, cy, UITheme::TEXT_TITLE, 1);
+        } else if (results_copy.empty()) {
+            font.draw_text_centered("Click [CPU vs GPU] in sidebar to run benchmark.", cx, cy, UITheme::TEXT_MUTED, 1);
+        }
+    } else {
+        font.draw_text_centered("BENCHMARK: OpenMP THREAD SCALING", cx, cy, UITheme::TEXT_TITLE, 2);
+        cy += 35;
+        font.draw_text_centered("[ Click 'VIEW MODE' to switch to CPU vs GPU | Green >= 80%, Amber >= 50% ]", cx, cy, UITheme::TEXT_MUTED, 1);
+        cy += 25;
+
+        std::string header = "THREADS | GRID       | STEP TIME |   GEN/SEC  | SPEEDUP | EFFICIENCY | THROUGHPUT";
+        std::string sep    = "--------+------------+-----------+------------+---------+------------+------------";
+        font.draw_text_centered(header, cx, cy, UITheme::TEXT_NORMAL, 1); cy += 20;
+        font.draw_text_centered(sep, cx, cy, UITheme::TEXT_MUTED, 1); cy += 20;
+
+        std::vector<ThreadScalingResult> results_copy;
+        bool is_running = false;
+        bool is_done = false;
+        int current_step = 0;
+        int total_steps = 0;
+        std::string title;
+        {
+            std::lock_guard<std::mutex> lock(thread_bench_suite.mtx);
+            results_copy = thread_bench_suite.results;
+            is_running = thread_bench_suite.is_running;
+            is_done = thread_bench_suite.is_done;
+            current_step = thread_bench_suite.current_step;
+            total_steps = thread_bench_suite.total_steps;
+            title = thread_bench_suite.title;
+        }
+
+        int start_x = cx - font.get_text_width(header, 1) / 2;
+
+        for (const auto& res : results_copy) {
+            char buf[160];
+            snprintf(buf, sizeof(buf), "  %3d   | %4dx%-5d | %7.2fms | %8.1f/s | %6.2fx  |   %6.1f%%   | %6.1f MC/s",
+                res.threads, res.grid_w, res.grid_h, res.step_ms, res.gen_per_sec, res.speedup, res.efficiency, res.throughput_mcells);
+
+            SDL_Color row_color = UITheme::TEXT_NORMAL;
+            if (res.efficiency >= 80.0) row_color = UITheme::ACCENT_GREEN;
+            else if (res.efficiency >= 50.0) row_color = UITheme::ACCENT_AMBER;
+            else row_color = UITheme::ACCENT_BLUE;
+
+            font.draw_text(buf, start_x, cy, row_color, 1);
+            cy += 20;
+        }
+
+        cy += 15;
+        if (is_running) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "BENCHMARKING %s... [ %d / %d threads ]", title.c_str(), current_step, total_steps);
+            font.draw_text_centered(buf, cx, cy, UITheme::ACCENT_AMBER, 1);
+        } else if (is_done) {
+            font.draw_text_centered("THREAD SCALING COMPLETE (Saved to benchmark_thread_scaling.csv)", cx, cy, UITheme::TEXT_TITLE, 1);
+        } else if (results_copy.empty()) {
+            font.draw_text_centered("Click [THREAD SCALE] in sidebar to run thread scaling benchmark.", cx, cy, UITheme::TEXT_MUTED, 1);
+        }
     }
 }

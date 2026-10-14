@@ -34,6 +34,10 @@ public:
     virtual const unsigned char* get_grid_state() = 0;
     virtual void set_grid_state(const unsigned char* host_state) = 0;
 
+    // OpenMP thread scaling control (0 = system default / max available)
+    virtual void set_num_threads(int threads) { (void)threads; }
+    virtual int get_num_threads() const { return 1; }
+
     int get_width() const { return width; }
     int get_height() const { return height; }
 
@@ -52,6 +56,7 @@ private:
     std::vector<unsigned int> pixels;
     int population = 0;
     bool pop_dirty = true;
+    int num_threads = 0; // 0 = automatic / omp_get_max_threads()
 
 public:
     CPUEngine() {}
@@ -67,11 +72,14 @@ public:
 
     const unsigned int* get_pixels() override;
     int get_population() override;
-    std::string get_name() const override { return "CPU (OpenMP Multi-Threaded)"; }
+    std::string get_name() const override;
     bool is_gpu() const override { return false; }
 
     const unsigned char* get_grid_state() override { return current_state.data(); }
     void set_grid_state(const unsigned char* host_state) override;
+
+    void set_num_threads(int threads) override;
+    int get_num_threads() const override;
 };
 
 // Check if CUDA support is compiled in and available on the machine
@@ -79,6 +87,6 @@ bool is_cuda_available();
 std::string get_cuda_device_name();
 
 // Factory to create simulation engine
-std::unique_ptr<SimulationEngine> create_simulation_engine(bool prefer_cuda, int width, int height);
+std::unique_ptr<SimulationEngine> create_simulation_engine(bool prefer_cuda, int width, int height, int threads = 0, bool verbose = true);
 
 #endif // ENGINE_H

@@ -194,12 +194,15 @@ Game_Of_Life/
 │   ├── gui.h                  # GUI widgets, layout, themes, camera
 │   └── patterns.h             # Conway patterns (Glider, Gosper Gun, Pulsar, etc.)
 ├── src/                       # Source implementation files (.cpp / .cu)
+│   ├── benchmark.cpp          # Precision HPC benchmarking, thread scaling & CSV export
 │   ├── engine_cpu.cpp         # OpenMP multi-threaded CPU engine
 │   ├── engine_cuda.cu         # CUDA GPU kernels and memory management
 │   ├── engine_factory.cpp     # Engine detection & factory instantiation
 │   ├── font8x8.cpp            # Font bitmap data and atlas initialization
 │   ├── gui.cpp                # Modern dark UI widgets, layout, buttons, camera
-│   └── main.cpp               # Master application loop, SDL2 initialization
+│   └── main.cpp               # Master application loop, CLI flags, SDL2 initialization
+├── scripts/                   # Performance analysis & visualization scripts
+│   └── plot_scaling.py        # Automated Python/Matplotlib graph generator
 ├── build/                     # Compiled object files (.o) [auto-generated]
 ├── bin/                       # Output binaries [auto-generated]
 │   └── game_of_life           # Compiled executable
@@ -208,3 +211,97 @@ Game_Of_Life/
 ├── .gitignore                 # Git ignore for build artifacts and binaries
 └── README.md                  # Comprehensive documentation
 ```
+
+---
+
+## HPC Performance Benchmarking & Thread Scaling
+
+This project includes a dedicated benchmarking and thread-scaling framework designed specifically for **High Performance Computing (HPC)** evaluations:
+
+### 1. Headless CLI Benchmarking (HPC Clusters / No GUI Required)
+
+Run high-throughput benchmarks directly on headless servers, compute clusters, or SSH sessions without needing an X11/SDL display:
+
+```bash
+# 1. Run OpenMP Strong Thread Scaling benchmark (sweeps 1, 2, 4, 6, 8, 12 threads on 1024x1024)
+./game_of_life --bench-threads 1024 1024
+
+# 2. Run OpenMP Weak Thread Scaling benchmark (scales problem size proportionally with threads)
+./game_of_life --bench-weak 512
+
+# 3. Run CPU vs CUDA GPU comparison across 256x256 -> 4096x4096 (16.8M cells)
+./game_of_life --bench-cg
+
+# 4. Run the entire suite and export all data to CSV
+./game_of_life --bench-all
+
+# 5. Lock CPU engine to a specific thread count for interactive mode
+./game_of_life --threads 4
+```
+
+### 2. Automated CSV Export & Report Graph Generation
+
+Every benchmark run exports data directly to CSV files (`benchmark_thread_scaling.csv`, `benchmark_weak_scaling.csv`, `benchmark_cpu_gpu.csv`).
+
+Generate publication-ready charts (Speedup vs Amdahl curve, Parallel Efficiency %, Throughput) with the included Python tool:
+
+```bash
+python3 scripts/plot_scaling.py benchmark_thread_scaling.csv
+```
+This automatically produces:
+- `scripts/strong_scaling_speedup.png` (Measured Speedup vs Ideal Linear vs Amdahl's Law Model)
+- `scripts/parallel_efficiency.png` (Parallel Efficiency % across cores with 80% threshold line)
+- `scripts/throughput_scaling.png` (Megacells/sec cell update rate)
+
+### 3. In-Game Interactive Performance Dashboard
+
+In the graphical user interface, open the **`--- BENCHMARK ---`** section on the sidebar:
+- Click **`[CPU vs GPU]`** to benchmark the dual engines in real-time.
+- Click **`[THREAD SCALE]`** to run live OpenMP thread scaling on the current universe.
+- Click **`[VIEW MODE]`** to toggle between CPU vs GPU and Thread Scaling tables.
+- Table highlights efficiency in **Green** ($\ge 80\%$), **Amber** ($50\%-79\%$), and **Blue** ($<50\%$).
+
+---
+
+## Distributed-Memory Parallelism (2D Cartesian MPI Engine)
+
+For cluster supercomputing and multi-node HPC benchmarking, a dedicated distributed-memory implementation is provided in `src/main_mpi.cpp`.
+
+### Architectural Highlights
+
+1. **2D Cartesian Domain Decomposition**:
+   - Uses `MPI_Dims_create` and `MPI_Cart_create` to divide the global $W \times H$ lattice into a balanced 2D grid of processes with toroidal periodic boundary topology (`periods = {1, 1}`).
+2. **Two-Stage Dimension-by-Dimension Halo Exchange**:
+   - Exchanges North/South rows first, then East/West columns with newly arrived corners. This exchanges all 8 Moore neighbors across ranks with only 4 non-blocking messages per generation rather than 8.
+3. **Zero-Copy Strided Derived Datatypes**:
+   - Utilizes `MPI_Type_vector` to transmit non-contiguous vertical border columns directly from memory without manual host memory packing/unpacking buffers.
+4. **Latency Hiding (Communication-Computation Overlap)**:
+   - While non-blocking network transfers (`MPI_Irecv` / `MPI_Isend`) are in flight, ranks compute their local inner cells $[2 \dots W-1] \times [2 \dots H-1]$ asynchronously, completely masking network latency behind arithmetic processing.
+5. **Decentralized Parallel Seeding**:
+   - Every rank independently evaluates a deterministic coordinate hash `hash_coord(gx, gy, seed)` for its local coordinates, eliminating rank-0 broadcast serial bottlenecks.
+
+### Compilation & Execution
+
+```bash
+# 1. Install OpenMPI development libraries (Ubuntu / Debian)
+sudo apt update && sudo apt install -y libopenmpi-dev openmpi-bin
+
+# 2. Compile the distributed-memory engine
+make mpi
+
+# 3. Run on 4 processes with a 1024x1024 grid for 100 generations
+mpirun -np 4 ./game_of_life_mpi 1024 1024 100
+
+# 4. Sweep process counts (1, 2, 4, 8 ranks) and plot scaling results
+for np in 1 2 4 8; do
+    mpirun -np $np ./game_of_life_mpi 1024 1024 100 --csv benchmark_mpi.csv
+done
+
+python3 scripts/plot_scaling.py benchmark_mpi.csv
+```
+This automatically produces:
+- `scripts/mpi_scaling_speedup.png` (Speedup vs Process Count)
+- `scripts/mpi_parallel_efficiency.png` (Parallel Efficiency % across MPI ranks)
+- `scripts/mpi_throughput_scaling.png` (Distributed Megacells/sec throughput)
+
+

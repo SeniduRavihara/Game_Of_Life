@@ -31,12 +31,14 @@ std::string get_cuda_device_name() {
 #endif
 }
 
-std::unique_ptr<SimulationEngine> create_simulation_engine(bool prefer_cuda, int width, int height) {
+std::unique_ptr<SimulationEngine> create_simulation_engine(bool prefer_cuda, int width, int height, int threads, bool verbose) {
 #ifdef USE_CUDA
     if (prefer_cuda && is_cuda_available()) {
         auto engine = std::make_unique<CUDAEngine>();
         if (engine->init(width, height)) {
-            std::cout << "[INFO] Using Hardware Acceleration: " << engine->get_name() << "\n";
+            if (verbose) {
+                std::cout << "[INFO] Using Hardware Acceleration: " << engine->get_name() << "\n";
+            }
             return engine;
         }
         std::cerr << "[WARN] CUDA initialization failed. Falling back to multi-threaded CPU engine.\n";
@@ -44,7 +46,12 @@ std::unique_ptr<SimulationEngine> create_simulation_engine(bool prefer_cuda, int
 #endif
 
     auto engine = std::make_unique<CPUEngine>();
+    if (threads > 0) {
+        engine->set_num_threads(threads);
+    }
     engine->init(width, height);
-    std::cout << "[INFO] Using Simulation Engine: " << engine->get_name() << "\n";
+    if (verbose) {
+        std::cout << "[INFO] Using Simulation Engine: " << engine->get_name() << "\n";
+    }
     return engine;
 }
